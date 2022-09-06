@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const jwt = require('jsonwebtoken');
+// const jwt = require('jsonwebtoken');
+const stripe = require('stripe')('sk_test_51L1vFzL3PNLJowQNvQgUPyTyG4MTrwRh6JDMxgImYykHOoK5x78EjMOumkWGAcZMo2eIDXo4ARrPPk4Qhujx3Q8G00BmNXd5xk')
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
@@ -30,11 +31,27 @@ async function run(){
 
         const orderCollection = client.db("parts_manufacturer").collection("order");
 
-        const usersCollection = client.db("parts_manufacturer").collection("users");
+        const userCollection = client.db("parts_manufacturer").collection("users");
 
         const informationCollection = client.db("parts_manufacturer").collection("information");
 
+        const paymentCollection = client.db("parts_manufacturer").collection('payments');
 
+
+
+
+        // Payment API
+        app.post('/create-payment-intent', async(req, res) =>{
+          const order = req.body;
+          const price = order.price;
+          const amount = price*100;
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount : amount,
+            currency: 'usd',
+            payment_method_types:['card']
+          });
+          res.send({clientSecret: paymentIntent.client_secret})
+        });
 
 
         // GET API
@@ -55,15 +72,15 @@ async function run(){
 
 
         app.get('/user', async (req, res) => {
-            const users = await usersCollection.find().toArray();
+            const users = await userCollection.find().toArray();
             res.send(users);
           });
 
 
           app.get('/admin/:email', async(req, res) =>{
             const email = req.params.email;
-            const user = await usersCollection.findOne({email: email});
-            const isAdmin = user.role === 'admin';
+            const user = await userCollection.findOne({email: email});
+            const isAdmin = user?.role === 'admin';
             res.send({admin: isAdmin})
           });
 
@@ -144,7 +161,7 @@ async function run(){
             const updateDoc = {
               $set: { role: 'admin' },
             };
-            const result = await usersCollection.updateOne(filter, updateDoc);
+            const result = await userCollection.updateOne(filter, updateDoc);
             
             res.send(result);
           });
@@ -158,9 +175,9 @@ async function run(){
             const updateDoc = {
                $set: user,
              };
-             const result = await usersCollection.updateOne(filter, updateDoc, options);
-             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
-             res.send({result, token});
+             const result = await userCollection.updateOne(filter, updateDoc, options);
+            //  const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
+             res.send({result});
         });
 
 
@@ -178,7 +195,7 @@ async function run(){
             const result = await paymentCollection.insertOne(payment);
             const updatedOrder = await orderCollection.updateOne(filter, updatedDoc);
             res.send(updatedOrder);
-          })
+          });
 
 
             //  DELETE Method
@@ -197,12 +214,12 @@ async function run(){
             res.send(result);
         });
 
-
-
-
-
-
-
+        app.delete('/user/:id', async(req, res) =>{
+          const id = req.params.id;
+            const query = {_id: ObjectId(id)};
+            const result = await userCollection.deleteOne(query);
+            res.send(result);
+        })
 
 
 
@@ -217,7 +234,7 @@ async function run(){
     const options = { upsert: true };
     const updatedDoc = {
       $set: {
-        quantity: newQuantity.quantity,
+        stock: newQuantity.stock,
       },
     };
     const result = await productsCollection.updateOne(
