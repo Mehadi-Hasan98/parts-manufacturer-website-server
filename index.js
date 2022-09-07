@@ -20,6 +20,21 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 
 
+// function verifyJWT(req, res, next) {
+//   const authHeader = req.headers.authorization;
+//   if (!authHeader) {
+//     return res.status(401).send({ message: 'UnAuthorized access' });
+//   }
+//   const token = authHeader.split(' ')[1];
+//   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+//     if (err) {
+//       return res.status(403).send({ message: 'Forbidden access' })
+//     }
+//     req.decoded = decoded;
+//     next();
+//   });
+// }
+
 
 async function run(){
     try{
@@ -38,6 +53,16 @@ async function run(){
         const paymentCollection = client.db("parts_manufacturer").collection('payments');
 
 
+      //   const verifyAdmin = async (req, res, next) => {
+      //     const requester = req.decoded.email;
+      //   const requesterAccount = await userCollection.findOne({ email: requester });
+      //   if (requesterAccount.role === 'admin') {
+      //     next();
+      //   }
+      //   else {
+      //     res.status(403).send({ message: 'forbidden' });
+      //   }
+      // }
 
 
         // Payment API
@@ -103,9 +128,17 @@ async function run(){
 
         // Order GET API
         app.get('/order', async(req, res) =>{
-            const query = req.body;
+          // const decodedEmail = req.decoded.email;
+          const query = req.body;
             const orders = await orderCollection.find(query).toArray();
-            res.send(orders);
+           return res.send(orders);
+          // if(user === decodedEmail){
+            
+          // }
+          // else{
+          //   return res.status(403).send({message: 'forbidden access'});
+          // }
+          
         });
 
         app.get('/order/:id', async(req, res) =>{
@@ -125,7 +158,7 @@ async function run(){
           });
 
 
-         //   POST 
+         //   POST method
 
          app.post('/product', async(req, res) =>{
             const newItem = req.body;
@@ -156,7 +189,7 @@ async function run(){
 
         // PUT Method
 
-        app.put('/user/admin/:email', async (req, res) => {
+        app.put('/user/admin/:email',  async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
             const updateDoc = {
@@ -165,6 +198,15 @@ async function run(){
             const result = await userCollection.updateOne(filter, updateDoc);
             
             res.send(result);
+            // const requester = req.decoded.email;
+            // const requesterAccount = await userCollection.findOne({ email: requester });
+            // if(requester.role === 'admin'){
+              
+            
+            // }
+            // else{
+            //   res.status(403).send({message: 'forbidden'});
+            // }
           });
 
 
@@ -177,8 +219,8 @@ async function run(){
                $set: user,
              };
              const result = await userCollection.updateOne(filter, updateDoc, options);
-             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' })
-             res.send({result, token});
+            //  const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '3d' })
+             res.send(result);
         });
 
         app.put("/order/shipped/:id", async (req, res) => {
