@@ -6,6 +6,9 @@ const stripe = require('stripe')('sk_test_51L1vFzL3PNLJowQNvQgUPyTyG4MTrwRh6JDMx
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
+const nodemailer = require('nodemailer');
+const mg = require('nodemailer-mailgun-transport');
+
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -34,6 +37,38 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 //     next();
 //   });
 // }
+
+
+const auth = {
+  auth: {
+    api_key: '5c1d21af8d1e43901115168ead86174b-07a637b8-c7a492bf',
+    domain: 'sandbox221c212ec89844c8b929cebdb7b3d41e.mailgun.org'
+  }
+};
+
+
+const nodemailerMailgun = nodemailer.createTransport(mg(auth));
+
+function sendConfirmEmail(){
+  var email = {
+    from: 'myemail@example.com',
+      to: 'brownfish.shuvo@gmail.com',
+      subject: 'Hey you, awesome!',
+      html: '<b>Wow Big powerful letters</b>',
+      text: 'Confirm your order by complete payment!!'
+  };
+  
+  nodemailerMailgun.sendMail(email, (err, info) => {
+    if (err) {
+      console.log(`Error: ${err}`);
+    }
+    else {
+      console.log(`Response: ${info}`);
+    }
+  });
+  
+}
+
 
 
 async function run(){
@@ -130,7 +165,9 @@ async function run(){
         app.get('/order', async(req, res) =>{
           // const decodedEmail = req.decoded.email;
           const query = req.body;
+          
             const orders = await orderCollection.find(query).toArray();
+            
            return res.send(orders);
           // if(user === decodedEmail){
             
@@ -174,9 +211,11 @@ async function run(){
         });
 
         app.post('/order', async(req, res) =>{
-            const query = req.body;
-            const order = await orderCollection.insertOne(query);
-            res.send(order);
+            const order = req.body;
+            const result = await orderCollection.insertOne(order);
+            console.log("sending email");
+           sendConfirmEmail();
+            res.send(result);
         });
 
         app.post('/information', async(req, res) => {
